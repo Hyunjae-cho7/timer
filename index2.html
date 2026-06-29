@@ -1,0 +1,1051 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>프리미엄 타이머 · 스톱워치</title>
+  <style>
+    :root {
+      --bg: #0f0f23;
+      --panel: rgba(255, 255, 255, 0.075);
+      --panel-strong: rgba(255, 255, 255, 0.12);
+      --text: #f7f7ff;
+      --muted: #a7acc8;
+      --accent: #748ffc;
+      --accent-2: #91a7ff;
+      --danger: #ff8787;
+      --success: #69db7c;
+      --warning: #ffd43b;
+      --ring-bg: rgba(255,255,255,0.10);
+      --shadow: 0 28px 80px rgba(0, 0, 0, 0.42);
+      --radius: 28px;
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      height: 100%;
+      margin: 0;
+      font-family: Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans KR", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 15% 10%, rgba(116, 143, 252, 0.22), transparent 34%),
+        radial-gradient(circle at 80% 20%, rgba(145, 167, 255, 0.14), transparent 32%),
+        radial-gradient(circle at 50% 100%, rgba(105, 219, 124, 0.08), transparent 28%),
+        var(--bg);
+      overflow-x: hidden;
+    }
+
+    body {
+      min-height: 100%;
+      display: grid;
+      place-items: center;
+      padding: 28px 16px;
+    }
+
+    .app {
+      width: min(960px, 100%);
+      display: grid;
+      gap: 18px;
+    }
+
+    .hero {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: flex-end;
+      padding: 0 6px;
+    }
+
+    .hero h1 {
+      margin: 0;
+      font-size: clamp(24px, 4vw, 42px);
+      letter-spacing: -0.06em;
+      line-height: 1.05;
+    }
+
+    .hero p {
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.6;
+    }
+
+    .status-pill {
+      flex: 0 0 auto;
+      border: 1px solid rgba(255,255,255,0.14);
+      background: rgba(255,255,255,0.06);
+      border-radius: 999px;
+      padding: 10px 14px;
+      color: var(--muted);
+      font-size: 13px;
+      backdrop-filter: blur(16px);
+      box-shadow: 0 12px 30px rgba(0,0,0,0.18);
+    }
+
+    .card {
+      position: relative;
+      border: 1px solid rgba(255,255,255,0.12);
+      background:
+        linear-gradient(145deg, rgba(255,255,255,0.11), rgba(255,255,255,0.045)),
+        rgba(15, 15, 35, 0.78);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      backdrop-filter: blur(22px);
+    }
+
+    .card::before {
+      content: "";
+      position: absolute;
+      inset: -1px;
+      background: linear-gradient(135deg, rgba(116,143,252,0.26), transparent 34%, rgba(255,255,255,0.08));
+      pointer-events: none;
+      mask: linear-gradient(#000, #000) content-box, linear-gradient(#000, #000);
+      mask-composite: exclude;
+      padding: 1px;
+      border-radius: inherit;
+    }
+
+    .tabs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      padding: 12px;
+      background: rgba(255,255,255,0.045);
+      border-bottom: 1px solid rgba(255,255,255,0.09);
+    }
+
+    .tab {
+      border: 0;
+      border-radius: 18px;
+      padding: 15px 16px;
+      color: var(--muted);
+      background: transparent;
+      font-weight: 800;
+      font-size: 16px;
+      cursor: pointer;
+      transition: 0.2s ease;
+    }
+
+    .tab:hover {
+      color: var(--text);
+      background: rgba(255,255,255,0.06);
+    }
+
+    .tab.active {
+      color: white;
+      background: linear-gradient(135deg, var(--accent), #5c7cfa);
+      box-shadow: 0 16px 34px rgba(116, 143, 252, 0.28);
+    }
+
+    .content {
+      padding: clamp(18px, 3vw, 34px);
+    }
+
+    .mode {
+      display: none;
+      animation: fadeIn 0.22s ease both;
+    }
+
+    .mode.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .timer-layout {
+      display: grid;
+      grid-template-columns: minmax(260px, 410px) 1fr;
+      gap: clamp(20px, 5vw, 46px);
+      align-items: center;
+    }
+
+    .ring-wrap {
+      position: relative;
+      width: min(410px, 100%);
+      aspect-ratio: 1;
+      margin: 0 auto;
+      display: grid;
+      place-items: center;
+    }
+
+    .progress-ring {
+      width: 100%;
+      height: 100%;
+      transform: rotate(-90deg);
+      filter: drop-shadow(0 0 22px rgba(116,143,252,0.20));
+    }
+
+    .ring-bg {
+      fill: none;
+      stroke: var(--ring-bg);
+      stroke-width: 9;
+    }
+
+    .ring-progress {
+      fill: none;
+      stroke: url(#accentGradient);
+      stroke-width: 9;
+      stroke-linecap: round;
+      stroke-dasharray: 1000;
+      stroke-dashoffset: 1000;
+      transition: stroke-dashoffset 0.08s linear;
+    }
+
+    .ring-glow {
+      fill: none;
+      stroke: rgba(116,143,252,0.16);
+      stroke-width: 20;
+      stroke-linecap: round;
+      stroke-dasharray: 1000;
+      stroke-dashoffset: 1000;
+      transition: stroke-dashoffset 0.08s linear;
+    }
+
+    .center-display {
+      position: absolute;
+      inset: 13%;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      background:
+        radial-gradient(circle at 50% 34%, rgba(255,255,255,0.08), transparent 54%),
+        rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.10);
+    }
+
+    .time-display {
+      font-variant-numeric: tabular-nums;
+      font-size: clamp(44px, 9vw, 82px);
+      line-height: 1;
+      letter-spacing: -0.08em;
+      font-weight: 900;
+      text-shadow: 0 12px 40px rgba(0,0,0,0.42);
+    }
+
+    .sub-display {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .controls-panel {
+      display: grid;
+      gap: 18px;
+    }
+
+    .section-title {
+      margin: 0 0 10px;
+      color: var(--muted);
+      font-size: 13px;
+      letter-spacing: 0.02em;
+      font-weight: 900;
+    }
+
+    .button-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    button {
+      font: inherit;
+    }
+
+    .btn {
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 18px;
+      padding: 13px 17px;
+      color: var(--text);
+      background: rgba(255,255,255,0.07);
+      cursor: pointer;
+      font-weight: 850;
+      transition: transform .18s ease, background .18s ease, border-color .18s ease, box-shadow .18s ease;
+      min-height: 48px;
+    }
+
+    .btn:hover {
+      transform: translateY(-1px);
+      background: rgba(255,255,255,0.105);
+      border-color: rgba(255,255,255,0.20);
+    }
+
+    .btn:active {
+      transform: translateY(0) scale(0.98);
+    }
+
+    .btn.primary {
+      background: linear-gradient(135deg, var(--accent), #5c7cfa);
+      border-color: rgba(255,255,255,0.12);
+      box-shadow: 0 16px 34px rgba(116,143,252,0.30);
+    }
+
+    .btn.danger {
+      color: #fff;
+      background: rgba(255, 135, 135, 0.14);
+      border-color: rgba(255, 135, 135, 0.28);
+    }
+
+    .btn.success {
+      color: #fff;
+      background: rgba(105, 219, 124, 0.13);
+      border-color: rgba(105, 219, 124, 0.30);
+    }
+
+    .btn.ghost {
+      color: var(--muted);
+    }
+
+    .btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .preset-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 9px;
+    }
+
+    .preset {
+      border: 1px solid rgba(255,255,255,0.10);
+      border-radius: 16px;
+      padding: 12px 8px;
+      background: rgba(255,255,255,0.055);
+      color: var(--muted);
+      cursor: pointer;
+      font-weight: 850;
+      transition: 0.18s ease;
+      min-height: 44px;
+    }
+
+    .preset:hover,
+    .preset.active {
+      color: white;
+      border-color: rgba(116,143,252,0.72);
+      background: rgba(116,143,252,0.20);
+    }
+
+    .custom-box {
+      border: 1px solid rgba(255,255,255,0.10);
+      border-radius: 22px;
+      padding: 15px;
+      background: rgba(255,255,255,0.045);
+    }
+
+    .input-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr auto;
+      gap: 10px;
+      align-items: end;
+    }
+
+    label {
+      display: grid;
+      gap: 7px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    input[type="number"] {
+      width: 100%;
+      border: 1px solid rgba(255,255,255,0.13);
+      border-radius: 16px;
+      padding: 13px 14px;
+      background: rgba(0,0,0,0.20);
+      color: var(--text);
+      outline: none;
+      font-size: 16px;
+      font-weight: 850;
+    }
+
+    input[type="number"]:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 4px rgba(116,143,252,0.14);
+    }
+
+    .laps-card {
+      margin-top: 22px;
+      border: 1px solid rgba(255,255,255,0.10);
+      background: rgba(255,255,255,0.045);
+      border-radius: 24px;
+      overflow: hidden;
+    }
+
+    .laps-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 16px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .laps-header strong {
+      font-size: 15px;
+    }
+
+    .lap-list {
+      max-height: 245px;
+      overflow: auto;
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      scrollbar-color: rgba(116,143,252,0.65) transparent;
+    }
+
+    .lap-item {
+      display: grid;
+      grid-template-columns: 70px 1fr 1fr;
+      gap: 10px;
+      padding: 13px 16px;
+      border-bottom: 1px solid rgba(255,255,255,0.065);
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+      font-weight: 750;
+    }
+
+    .lap-item:last-child {
+      border-bottom: 0;
+    }
+
+    .lap-item .lap-no {
+      color: var(--accent-2);
+      font-weight: 900;
+    }
+
+    .lap-item .lap-total {
+      color: var(--text);
+      text-align: right;
+    }
+
+    .empty {
+      padding: 26px 16px;
+      color: var(--muted);
+      text-align: center;
+      font-size: 14px;
+    }
+
+    .mini-note {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 22px;
+      transform: translateX(-50%) translateY(20px);
+      opacity: 0;
+      pointer-events: none;
+      padding: 13px 16px;
+      color: white;
+      background: rgba(21, 24, 48, 0.92);
+      border: 1px solid rgba(255,255,255,0.13);
+      border-radius: 999px;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.38);
+      backdrop-filter: blur(18px);
+      font-weight: 800;
+      transition: 0.24s ease;
+      z-index: 20;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    @media (max-width: 780px) {
+      body {
+        padding: 16px 12px;
+        align-items: start;
+      }
+
+      .hero {
+        display: block;
+        padding: 2px 4px;
+      }
+
+      .status-pill {
+        display: inline-block;
+        margin-top: 12px;
+      }
+
+      .timer-layout {
+        grid-template-columns: 1fr;
+      }
+
+      .ring-wrap {
+        width: min(340px, 94vw);
+      }
+
+      .content {
+        padding: 16px;
+      }
+
+      .preset-grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
+
+      .input-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .input-grid .btn {
+        grid-column: 1 / -1;
+      }
+
+      .button-row .btn {
+        flex: 1 1 calc(50% - 8px);
+      }
+
+      .lap-item {
+        grid-template-columns: 58px 1fr 1fr;
+        padding: 12px;
+        font-size: 14px;
+      }
+    }
+
+    @media (max-width: 420px) {
+      .tab {
+        font-size: 14px;
+        padding: 13px 10px;
+      }
+
+      .button-row {
+        gap: 8px;
+      }
+
+      .btn {
+        padding: 12px 11px;
+        border-radius: 16px;
+      }
+
+      .time-display {
+        font-size: 48px;
+      }
+
+      .preset-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <main class="app">
+    <header class="hero">
+      <div>
+        <h1>타이머 · 스톱워치</h1>
+        <p>랩 기록 저장, 프리셋 카운트다운, 완료 알림음까지 담은 프리미엄 다크 테마 웹앱입니다.</p>
+      </div>
+      <div class="status-pill" id="statusPill">준비됨</div>
+    </header>
+
+    <section class="card" aria-label="타이머와 스톱워치 앱">
+      <nav class="tabs" aria-label="모드 선택">
+        <button class="tab active" type="button" data-tab="stopwatch">스톱워치</button>
+        <button class="tab" type="button" data-tab="timer">카운트다운 타이머</button>
+      </nav>
+
+      <div class="content">
+        <section class="mode active" id="stopwatchMode">
+          <div class="timer-layout">
+            <div class="ring-wrap">
+              <svg class="progress-ring" viewBox="0 0 260 260" aria-hidden="true">
+                <defs>
+                  <linearGradient id="accentGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#91a7ff" />
+                    <stop offset="100%" stop-color="#748ffc" />
+                  </linearGradient>
+                </defs>
+                <circle class="ring-bg" cx="130" cy="130" r="112"></circle>
+                <circle class="ring-glow" id="stopwatchGlow" cx="130" cy="130" r="112"></circle>
+                <circle class="ring-progress" id="stopwatchRing" cx="130" cy="130" r="112"></circle>
+              </svg>
+              <div class="center-display">
+                <div>
+                  <div class="time-display" id="stopwatchDisplay">00:00.00</div>
+                  <div class="sub-display" id="stopwatchSub">랩 기록은 자동 저장됩니다</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="controls-panel">
+              <div>
+                <p class="section-title">스톱워치 제어</p>
+                <div class="button-row">
+                  <button class="btn primary" id="swStartPause" type="button">시작</button>
+                  <button class="btn success" id="swLap" type="button" disabled>랩</button>
+                  <button class="btn danger" id="swReset" type="button">초기화</button>
+                </div>
+              </div>
+
+              <div class="laps-card">
+                <div class="laps-header">
+                  <strong>랩 기록</strong>
+                  <button class="btn ghost" id="clearLaps" type="button">기록 지우기</button>
+                </div>
+                <ul class="lap-list" id="lapList"></ul>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="mode" id="timerMode">
+          <div class="timer-layout">
+            <div class="ring-wrap">
+              <svg class="progress-ring" viewBox="0 0 260 260" aria-hidden="true">
+                <circle class="ring-bg" cx="130" cy="130" r="112"></circle>
+                <circle class="ring-glow" id="timerGlow" cx="130" cy="130" r="112"></circle>
+                <circle class="ring-progress" id="timerRing" cx="130" cy="130" r="112"></circle>
+              </svg>
+              <div class="center-display">
+                <div>
+                  <div class="time-display" id="timerDisplay">05:00</div>
+                  <div class="sub-display" id="timerSub">5분 타이머</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="controls-panel">
+              <div>
+                <p class="section-title">프리셋</p>
+                <div class="preset-grid" id="presetGrid">
+                  <button class="preset" type="button" data-min="1">1분</button>
+                  <button class="preset" type="button" data-min="3">3분</button>
+                  <button class="preset active" type="button" data-min="5">5분</button>
+                  <button class="preset" type="button" data-min="10">10분</button>
+                  <button class="preset" type="button" data-min="25">25분</button>
+                </div>
+              </div>
+
+              <div class="custom-box">
+                <p class="section-title">커스텀 설정</p>
+                <div class="input-grid">
+                  <label>
+                    분
+                    <input id="customMin" type="number" inputmode="numeric" min="0" max="999" value="5" />
+                  </label>
+                  <label>
+                    초
+                    <input id="customSec" type="number" inputmode="numeric" min="0" max="59" value="0" />
+                  </label>
+                  <button class="btn" id="applyCustom" type="button">적용</button>
+                </div>
+              </div>
+
+              <div>
+                <p class="section-title">타이머 제어</p>
+                <div class="button-row">
+                  <button class="btn primary" id="timerStartPause" type="button">시작</button>
+                  <button class="btn danger" id="timerReset" type="button">초기화</button>
+                </div>
+                <p class="mini-note">완료 시 브라우저 오디오 컨텍스트로 알림음이 재생됩니다. 모바일에서는 진동도 함께 시도합니다.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    const $ = (selector) => document.querySelector(selector);
+    const $$ = (selector) => document.querySelectorAll(selector);
+
+    const STORAGE_KEY = "premiumTimerStopwatchLaps.v1";
+
+    const statusPill = $("#statusPill");
+    const toast = $("#toast");
+
+    const circleRadius = 112;
+    const circumference = 2 * Math.PI * circleRadius;
+
+    const rings = {
+      stopwatch: $("#stopwatchRing"),
+      stopwatchGlow: $("#stopwatchGlow"),
+      timer: $("#timerRing"),
+      timerGlow: $("#timerGlow")
+    };
+
+    Object.values(rings).forEach((ring) => {
+      ring.style.strokeDasharray = circumference;
+      ring.style.strokeDashoffset = circumference;
+    });
+
+    function setProgress(ring, glow, progress) {
+      const clamped = Math.max(0, Math.min(1, progress));
+      const offset = circumference * (1 - clamped);
+      ring.style.strokeDashoffset = offset;
+      glow.style.strokeDashoffset = offset;
+    }
+
+    function showToast(message) {
+      toast.textContent = message;
+      toast.classList.add("show");
+      clearTimeout(showToast.timer);
+      showToast.timer = setTimeout(() => toast.classList.remove("show"), 2200);
+    }
+
+    function setStatus(message) {
+      statusPill.textContent = message;
+    }
+
+    function formatStopwatch(ms) {
+      const totalCentiseconds = Math.floor(ms / 10);
+      const centiseconds = totalCentiseconds % 100;
+      const totalSeconds = Math.floor(totalCentiseconds / 100);
+      const seconds = totalSeconds % 60;
+      const minutes = Math.floor(totalSeconds / 60) % 60;
+      const hours = Math.floor(totalSeconds / 3600);
+
+      if (hours > 0) {
+        return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}.${String(centiseconds).padStart(2, "0")}`;
+      }
+
+      return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}.${String(centiseconds).padStart(2, "0")}`;
+    }
+
+    function formatTimer(ms) {
+      const totalSeconds = Math.max(0, Math.ceil(ms / 1000));
+      const hours = Math.floor(totalSeconds / 3600);
+      const minutes = Math.floor((totalSeconds % 3600) / 60);
+      const seconds = totalSeconds % 60;
+
+      if (hours > 0) {
+        return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+      }
+
+      return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+    }
+
+    function loadLaps() {
+      try {
+        return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+      } catch {
+        return [];
+      }
+    }
+
+    function saveLaps() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(stopwatch.laps));
+    }
+
+    const stopwatch = {
+      running: false,
+      startAt: 0,
+      elapsedBeforeStart: 0,
+      elapsed: 0,
+      laps: loadLaps()
+    };
+
+    const swDisplay = $("#stopwatchDisplay");
+    const swSub = $("#stopwatchSub");
+    const swStartPause = $("#swStartPause");
+    const swLap = $("#swLap");
+    const swReset = $("#swReset");
+    const lapList = $("#lapList");
+    const clearLaps = $("#clearLaps");
+
+    function renderLaps() {
+      lapList.innerHTML = "";
+
+      if (stopwatch.laps.length === 0) {
+        const empty = document.createElement("li");
+        empty.className = "empty";
+        empty.textContent = "아직 저장된 랩 기록이 없습니다.";
+        lapList.appendChild(empty);
+        return;
+      }
+
+      stopwatch.laps.forEach((lap, index) => {
+        const item = document.createElement("li");
+        item.className = "lap-item";
+
+        const no = document.createElement("span");
+        no.className = "lap-no";
+        no.textContent = `#${String(stopwatch.laps.length - index).padStart(2, "0")}`;
+
+        const split = document.createElement("span");
+        split.textContent = `구간 ${formatStopwatch(lap.split)}`;
+
+        const total = document.createElement("span");
+        total.className = "lap-total";
+        total.textContent = formatStopwatch(lap.total);
+
+        item.append(no, split, total);
+        lapList.appendChild(item);
+      });
+    }
+
+    function updateStopwatch(now = performance.now()) {
+      if (stopwatch.running) {
+        stopwatch.elapsed = stopwatch.elapsedBeforeStart + (now - stopwatch.startAt);
+      }
+
+      swDisplay.textContent = formatStopwatch(stopwatch.elapsed);
+      const secondsInMinute = (stopwatch.elapsed % 60000) / 60000;
+      setProgress(rings.stopwatch, rings.stopwatchGlow, secondsInMinute || 0.0001);
+
+      if (stopwatch.laps.length > 0) {
+        swSub.textContent = `최근 랩 ${formatStopwatch(stopwatch.laps[0].split)}`;
+      } else {
+        swSub.textContent = stopwatch.running ? "측정 중입니다" : "랩 기록은 자동 저장됩니다";
+      }
+    }
+
+    swStartPause.addEventListener("click", () => {
+      if (!stopwatch.running) {
+        stopwatch.running = true;
+        stopwatch.startAt = performance.now();
+        swStartPause.textContent = "일시정지";
+        swLap.disabled = false;
+        setStatus("스톱워치 실행 중");
+      } else {
+        stopwatch.running = false;
+        stopwatch.elapsedBeforeStart = stopwatch.elapsed;
+        swStartPause.textContent = "시작";
+        setStatus("스톱워치 일시정지");
+      }
+      updateStopwatch();
+    });
+
+    swLap.addEventListener("click", () => {
+      if (!stopwatch.running) return;
+
+      const previousTotal = stopwatch.laps[0]?.total || 0;
+      const split = stopwatch.elapsed - previousTotal;
+
+      stopwatch.laps.unshift({
+        total: stopwatch.elapsed,
+        split,
+        createdAt: new Date().toISOString()
+      });
+
+      saveLaps();
+      renderLaps();
+      showToast("랩 기록이 저장되었습니다.");
+      updateStopwatch();
+    });
+
+    swReset.addEventListener("click", () => {
+      stopwatch.running = false;
+      stopwatch.startAt = 0;
+      stopwatch.elapsedBeforeStart = 0;
+      stopwatch.elapsed = 0;
+      swStartPause.textContent = "시작";
+      swLap.disabled = true;
+      setStatus("스톱워치 초기화");
+      updateStopwatch();
+    });
+
+    clearLaps.addEventListener("click", () => {
+      stopwatch.laps = [];
+      saveLaps();
+      renderLaps();
+      showToast("랩 기록을 모두 지웠습니다.");
+      updateStopwatch();
+    });
+
+    const timer = {
+      running: false,
+      duration: 5 * 60 * 1000,
+      remaining: 5 * 60 * 1000,
+      endAt: 0
+    };
+
+    const timerDisplay = $("#timerDisplay");
+    const timerSub = $("#timerSub");
+    const timerStartPause = $("#timerStartPause");
+    const timerReset = $("#timerReset");
+    const presetGrid = $("#presetGrid");
+    const customMin = $("#customMin");
+    const customSec = $("#customSec");
+    const applyCustom = $("#applyCustom");
+
+    let audioContext = null;
+
+    function ensureAudioContext() {
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContextClass) return null;
+      if (!audioContext) audioContext = new AudioContextClass();
+      if (audioContext.state === "suspended") audioContext.resume();
+      return audioContext;
+    }
+
+    function playAlarm() {
+      const ctx = ensureAudioContext();
+      if (!ctx) return;
+
+      const now = ctx.currentTime;
+      const notes = [880, 1174.66, 1396.91, 1174.66, 880];
+
+      notes.forEach((frequency, index) => {
+        const oscillator = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        oscillator.type = "sine";
+        oscillator.frequency.setValueAtTime(frequency, now + index * 0.18);
+
+        gain.gain.setValueAtTime(0.0001, now + index * 0.18);
+        gain.gain.exponentialRampToValueAtTime(0.22, now + index * 0.18 + 0.025);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + index * 0.18 + 0.15);
+
+        oscillator.connect(gain);
+        gain.connect(ctx.destination);
+        oscillator.start(now + index * 0.18);
+        oscillator.stop(now + index * 0.18 + 0.17);
+      });
+
+      if ("vibrate" in navigator) {
+        navigator.vibrate([180, 90, 180, 90, 260]);
+      }
+    }
+
+    function setTimerDuration(ms, label = "커스텀 타이머") {
+      timer.running = false;
+      timer.duration = Math.max(1000, ms);
+      timer.remaining = timer.duration;
+      timer.endAt = 0;
+      timerStartPause.textContent = "시작";
+      timerDisplay.textContent = formatTimer(timer.remaining);
+      timerSub.textContent = label;
+      setProgress(rings.timer, rings.timerGlow, 0);
+      setStatus("타이머 준비됨");
+    }
+
+    function updateTimer(now = performance.now()) {
+      if (timer.running) {
+        timer.remaining = Math.max(0, timer.endAt - now);
+      }
+
+      timerDisplay.textContent = formatTimer(timer.remaining);
+
+      const elapsed = timer.duration - timer.remaining;
+      const progress = timer.duration > 0 ? elapsed / timer.duration : 0;
+      setProgress(rings.timer, rings.timerGlow, progress);
+
+      const percent = Math.round(progress * 100);
+      timerSub.textContent = timer.running
+        ? `진행률 ${percent}%`
+        : timer.remaining === timer.duration
+          ? timerSub.textContent
+          : `남은 시간 ${formatTimer(timer.remaining)}`;
+
+      if (timer.running && timer.remaining <= 0) {
+        timer.running = false;
+        timer.remaining = 0;
+        timerStartPause.textContent = "시작";
+        timerDisplay.textContent = "00:00";
+        timerSub.textContent = "타이머 완료";
+        setProgress(rings.timer, rings.timerGlow, 1);
+        setStatus("타이머 완료");
+        playAlarm();
+        showToast("타이머가 완료되었습니다!");
+      }
+    }
+
+    presetGrid.addEventListener("click", (event) => {
+      const button = event.target.closest(".preset");
+      if (!button) return;
+
+      ensureAudioContext();
+
+      $$(".preset").forEach((preset) => preset.classList.remove("active"));
+      button.classList.add("active");
+
+      const minutes = Number(button.dataset.min);
+      customMin.value = minutes;
+      customSec.value = 0;
+      setTimerDuration(minutes * 60 * 1000, `${minutes}분 타이머`);
+    });
+
+    applyCustom.addEventListener("click", () => {
+      ensureAudioContext();
+
+      const minutes = Math.max(0, Number(customMin.value) || 0);
+      const seconds = Math.max(0, Math.min(59, Number(customSec.value) || 0));
+      const totalMs = (minutes * 60 + seconds) * 1000;
+
+      if (totalMs <= 0) {
+        showToast("1초 이상의 시간을 입력해 주세요.");
+        return;
+      }
+
+      $$(".preset").forEach((preset) => preset.classList.remove("active"));
+      customSec.value = seconds;
+      setTimerDuration(totalMs, "커스텀 타이머");
+      showToast("커스텀 시간이 적용되었습니다.");
+    });
+
+    timerStartPause.addEventListener("click", () => {
+      ensureAudioContext();
+
+      if (!timer.running) {
+        timer.running = true;
+        timer.endAt = performance.now() + timer.remaining;
+        timerStartPause.textContent = "일시정지";
+        setStatus("타이머 실행 중");
+      } else {
+        timer.running = false;
+        timerStartPause.textContent = "시작";
+        setStatus("타이머 일시정지");
+      }
+
+      updateTimer();
+    });
+
+    timerReset.addEventListener("click", () => {
+      timer.running = false;
+      timer.remaining = timer.duration;
+      timer.endAt = 0;
+      timerStartPause.textContent = "시작";
+      timerDisplay.textContent = formatTimer(timer.remaining);
+      timerSub.textContent = "초기 설정 시간으로 돌아왔습니다";
+      setProgress(rings.timer, rings.timerGlow, 0);
+      setStatus("타이머 초기화");
+    });
+
+    $$(".tab").forEach((tab) => {
+      tab.addEventListener("click", () => {
+        const mode = tab.dataset.tab;
+
+        $$(".tab").forEach((item) => item.classList.remove("active"));
+        tab.classList.add("active");
+
+        $$(".mode").forEach((section) => section.classList.remove("active"));
+        $(`#${mode}Mode`).classList.add("active");
+
+        setStatus(mode === "stopwatch" ? "스톱워치 모드" : "타이머 모드");
+      });
+    });
+
+    function animationLoop(now) {
+      updateStopwatch(now);
+      updateTimer(now);
+      requestAnimationFrame(animationLoop);
+    }
+
+    renderLaps();
+    updateStopwatch();
+    updateTimer();
+    requestAnimationFrame(animationLoop);
+  </script>
+</body>
+</html>
